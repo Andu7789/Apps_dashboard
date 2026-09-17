@@ -7,6 +7,7 @@ import { Auth } from './components/Auth'
 import { ProjectForm } from './components/ProjectForm'
 import { ProjectRow } from './components/ProjectRow'
 import { Settings } from './components/Settings'
+import { PillFilter } from './components/PillFilter'
 import { fetchRepoPushedAt } from './lib/github'
 import './App.css'
 
@@ -21,6 +22,8 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [ideaFilter, setIdeaFilter] = useState<string | null>(null)
+  const [activeFilter, setActiveFilter] = useState<string | null>(null)
+  const [nextFilter, setNextFilter] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -107,11 +110,17 @@ export default function App() {
     }
   }, [projects])
 
-  const ideaNames = useMemo(
-    () => Array.from(new Set(groups.ideas.map((p) => p.name))),
-    [groups.ideas]
-  )
-  const filteredIdeas = ideaFilter ? groups.ideas.filter((p) => p.name === ideaFilter) : groups.ideas
+  const uniqueNames = (list: Project[]) => Array.from(new Set(list.map((p) => p.name)))
+  const applyFilter = (list: Project[], filter: string | null) =>
+    filter ? list.filter((p) => p.name === filter) : list
+
+  const activeNames = useMemo(() => uniqueNames(groups.active), [groups.active])
+  const nextNames = useMemo(() => uniqueNames(groups.next), [groups.next])
+  const ideaNames = useMemo(() => uniqueNames(groups.ideas), [groups.ideas])
+
+  const filteredActive = applyFilter(groups.active, activeFilter)
+  const filteredNext = applyFilter(groups.next, nextFilter)
+  const filteredIdeas = applyFilter(groups.ideas, ideaFilter)
 
   if (session === undefined) return <div className="loading-screen">Loading…</div>
   if (!session) return <Auth />
@@ -194,8 +203,9 @@ export default function App() {
                   {groups.active.length}/{WIP_LIMIT}
                 </span>
               </h2>
+              <PillFilter names={activeNames} active={activeFilter} onChange={setActiveFilter} />
               {groups.active.length === 0 && <p className="empty">Nothing active. Pull from Next.</p>}
-              {groups.active.map((p) => (
+              {filteredActive.map((p) => (
                 <ProjectRow
                   key={p.id}
                   project={p}
@@ -211,8 +221,9 @@ export default function App() {
 
             <section className="section">
               <h2>Next (ranked by ICE)</h2>
+              <PillFilter names={nextNames} active={nextFilter} onChange={setNextFilter} />
               {groups.next.length === 0 && <p className="empty">Nothing queued.</p>}
-              {groups.next.map((p) => (
+              {filteredNext.map((p) => (
                 <ProjectRow
                   key={p.id}
                   project={p}
@@ -229,19 +240,7 @@ export default function App() {
 
           <section className="section">
             <h2>Idea inbox</h2>
-            {ideaNames.length > 0 && (
-              <div className="pill-row">
-                {ideaNames.map((name) => (
-                  <button
-                    key={name}
-                    className={`pill ${ideaFilter === name ? 'active' : ''}`}
-                    onClick={() => setIdeaFilter((f) => (f === name ? null : name))}
-                  >
-                    {name}
-                  </button>
-                ))}
-              </div>
-            )}
+            <PillFilter names={ideaNames} active={ideaFilter} onChange={setIdeaFilter} />
             {groups.ideas.length === 0 && <p className="empty">Capture your next idea here.</p>}
             {filteredIdeas.map((p) => (
               <ProjectRow
