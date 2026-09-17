@@ -5,7 +5,7 @@ and priority in one place. Portfolio view, RAG health status, ICE-ranked
 backlog, an "on fire" surface for anything overdue/red/stale, and a
 soft WIP limit on active work.
 
-Stack: Vite + React + TypeScript, Supabase (auth + Postgres), Cloudflare Pages.
+Stack: Vite + React + TypeScript, Supabase (auth + Postgres), Cloudflare Workers (static assets).
 
 ## Data
 
@@ -27,36 +27,37 @@ npm run dev
 
 Sign-in is a Supabase magic link (email OTP) — no passwords.
 
-## Deploy to Cloudflare Pages
+## Deploy to Cloudflare Workers
+
+Project: **apps-dashboard** (Workers & Pages → apps-dashboard). Deployed as
+a Worker serving static assets (`[assets]` in `wrangler.toml`), built via
+Cloudflare's git integration — build command `npm run build`, deploy
+command `wrangler deploy`.
 
 Production domain: **abdashboard.site**
 
-**Option A — Git integration (recommended):** connect this repo in the
-Cloudflare dashboard (Workers & Pages → Create → Pages → Connect to Git).
-Build settings:
+**Required — build variables.** The project's Settings → Variables and
+Secrets must have `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` set
+(values in `.env.example`). Vite inlines these at build time; without
+them the app throws immediately on load.
 
-- Framework preset: `Vite`
-- Build command: `npm run build`
-- Build output directory: `dist`
-- Environment variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
-  (values in `.env.example`)
-
-**Option B — CLI:**
+**CLI alternative:**
 
 ```bash
 npx wrangler login
-npm run deploy   # builds, then `wrangler pages deploy`
+npm run deploy   # builds, then `wrangler deploy`
 ```
 
 ### One-time manual setup (not scriptable from here)
 
-1. **Attach the domain.** In the Pages project → Custom domains → Set up
-   a custom domain → enter `abdashboard.site` (and `www.abdashboard.site`
-   if wanted). Cloudflare manages DNS automatically for domains already
-   on a Cloudflare zone.
+1. **Attach the domain.** Project → Domains tab → Add → enter
+   `abdashboard.site`. If the zone is on the same Cloudflare account this
+   auto-provisions DNS; only add DNS records by hand if that step
+   surfaces an explicit error asking for one.
 2. **Register the redirect URL.** In the Supabase project's dashboard →
    Authentication → URL Configuration:
    - Site URL: `https://abdashboard.site`
    - Redirect URLs: add `https://abdashboard.site/**`
 
-   Magic-link sign-in will fail on the live domain until this is done.
+   Magic-link sign-in will fail on the live domain until this is done
+   (it currently points at `http://localhost:5173`).
