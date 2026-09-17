@@ -231,6 +231,56 @@ button.danger {
   margin-top: 8px;
 }
 
+.hint {
+  font-size: 12px;
+  opacity: 0.65;
+}
+
+.hint a {
+  color: var(--accent);
+}
+
+.repo-picker {
+  position: relative;
+}
+
+.repo-picker-panel {
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--bg);
+}
+
+.repo-list {
+  margin-top: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.repo-item {
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.repo-item:hover {
+  background: var(--surface);
+}
+
+.repo-private {
+  font-size: 11px;
+}
+
 .auth-screen {
   min-height: 100svh;
   display: flex;

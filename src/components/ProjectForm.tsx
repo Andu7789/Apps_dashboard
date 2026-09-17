@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Project, ProjectDraft, Stage, Health } from '../types'
+import { RepoPicker } from './RepoPicker'
 
 const emptyDraft: ProjectDraft = {
   name: '',
@@ -137,6 +138,12 @@ export function ProjectForm({
         placeholder="URL (repo, doc, site…)"
         value={draft.url ?? ''}
         onChange={(e) => set('url', e.target.value)}
+      />
+      <RepoPicker
+        onPick={(repo) => {
+          set('url', repo.html_url)
+          if (!draft.name) set('name', repo.name)
+        }}
       />
       <div className="form-actions">
         <button type="button" className="secondary" onClick={onCancel}>

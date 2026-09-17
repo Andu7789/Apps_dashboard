@@ -6,6 +6,7 @@ import { isOnFire } from './types'
 import { Auth } from './components/Auth'
 import { ProjectForm } from './components/ProjectForm'
 import { ProjectRow } from './components/ProjectRow'
+import { Settings } from './components/Settings'
 import './App.css'
 
 const WIP_LIMIT = 3
@@ -16,6 +17,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Project | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -96,6 +98,9 @@ export default function App() {
           >
             + New
           </button>
+          <button className="secondary" onClick={() => setSettingsOpen(true)}>
+            Settings
+          </button>
           <button className="secondary" onClick={() => supabase.auth.signOut()}>
             Sign out
           </button>
@@ -103,6 +108,14 @@ export default function App() {
       </header>
 
       {error && <div className="banner error">{error}</div>}
+
+      {settingsOpen && (
+        <div className="modal-overlay" onClick={() => setSettingsOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <Settings onClose={() => setSettingsOpen(false)} />
+          </div>
+        </div>
+      )}
 
       {formOpen && (
         <div className="modal-overlay" onClick={() => setFormOpen(false)}>
