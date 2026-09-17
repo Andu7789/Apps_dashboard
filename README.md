@@ -29,6 +29,8 @@ Sign-in is a Supabase magic link (email OTP) — no passwords.
 
 ## Deploy to Cloudflare Pages
 
+Production domain: **abdashboard.site**
+
 **Option A — Git integration (recommended):** connect this repo in the
 Cloudflare dashboard (Workers & Pages → Create → Pages → Connect to Git).
 Build settings:
@@ -46,6 +48,15 @@ npx wrangler login
 npm run deploy   # builds, then `wrangler pages deploy`
 ```
 
-Also add the production URL to the Supabase project's Auth → URL
-Configuration → Redirect URLs, or magic-link sign-in will fail after
-deploy.
+### One-time manual setup (not scriptable from here)
+
+1. **Attach the domain.** In the Pages project → Custom domains → Set up
+   a custom domain → enter `abdashboard.site` (and `www.abdashboard.site`
+   if wanted). Cloudflare manages DNS automatically for domains already
+   on a Cloudflare zone.
+2. **Register the redirect URL.** In the Supabase project's dashboard →
+   Authentication → URL Configuration:
+   - Site URL: `https://abdashboard.site`
+   - Redirect URLs: add `https://abdashboard.site/**`
+
+   Magic-link sign-in will fail on the live domain until this is done.
