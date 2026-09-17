@@ -148,6 +148,22 @@ button.danger {
   margin-top: 2px;
 }
 
+.project-row-text.expandable {
+  cursor: pointer;
+}
+
+.expand-chevron {
+  font-size: 11px;
+  opacity: 0.5;
+}
+
+.description {
+  font-size: 13px;
+  opacity: 0.75;
+  margin-top: 6px;
+  white-space: pre-wrap;
+}
+
 .deadline {
   color: var(--amber);
 }

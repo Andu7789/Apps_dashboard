@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Project } from '../types'
 import { daysSince, isOnFire } from '../types'
 
@@ -20,6 +21,8 @@ export function ProjectRow({
 }) {
   const onFire = isOnFire(project)
   const stale = daysSince(project.last_reviewed_at)
+  const [expanded, setExpanded] = useState(false)
+  const hasDescription = !!project.description
 
   return (
     <div className={`project-row ${onFire ? 'on-fire' : ''}`}>
@@ -27,11 +30,15 @@ export function ProjectRow({
         <span className="health-dot" title={project.status}>
           {healthIcon[project.status]}
         </span>
-        <div className="project-row-text">
+        <div
+          className={`project-row-text ${hasDescription ? 'expandable' : ''}`}
+          onClick={() => hasDescription && setExpanded((e) => !e)}
+        >
           <div className="project-row-title">
             {onFire && <span className="fire">🔥</span>}
+            {hasDescription && <span className="expand-chevron">{expanded ? '▾' : '▸'}</span>}
             {project.url ? (
-              <a href={project.url} target="_blank" rel="noreferrer">
+              <a href={project.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
                 {project.name}
               </a>
             ) : (
@@ -50,6 +57,7 @@ export function ProjectRow({
               {new Date(project.deadline) < new Date() && ' (overdue)'}
             </div>
           )}
+          {expanded && hasDescription && <div className="description">{project.description}</div>}
         </div>
       </div>
       <div className="project-row-meta">
