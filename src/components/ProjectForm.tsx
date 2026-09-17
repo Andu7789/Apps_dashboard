@@ -102,8 +102,8 @@ export function ProjectForm({
         </label>
       </div>
       <div className="form-row ice-row">
-        <label>
-          Impact (1-10)
+        <label title="How big a difference this makes if it works — bigger reach, bigger payoff, more of a needle-mover.">
+          Impact (1-10) <span className="info-dot">ⓘ</span>
           <input
             type="number"
             min={1}
@@ -112,8 +112,8 @@ export function ProjectForm({
             onChange={(e) => set('ice_impact', e.target.value ? Number(e.target.value) : null)}
           />
         </label>
-        <label>
-          Confidence (1-10)
+        <label title="How sure you are the impact will actually happen — validated and proven scores high, pure guess/untested scores low.">
+          Confidence (1-10) <span className="info-dot">ⓘ</span>
           <input
             type="number"
             min={1}
@@ -122,8 +122,8 @@ export function ProjectForm({
             onChange={(e) => set('ice_confidence', e.target.value ? Number(e.target.value) : null)}
           />
         </label>
-        <label>
-          Ease (1-10)
+        <label title="How little effort/time this takes — quick and simple scores high, slow and complex scores low.">
+          Ease (1-10) <span className="info-dot">ⓘ</span>
           <input
             type="number"
             min={1}
