@@ -20,10 +20,12 @@ const emptyDraft: ProjectDraft = {
 
 export function ProjectForm({
   initial,
+  existingNames = [],
   onSave,
   onCancel,
 }: {
   initial?: Project
+  existingNames?: string[]
   onSave: (draft: ProjectDraft) => void
   onCancel: () => void
 }) {
@@ -63,9 +65,15 @@ export function ProjectForm({
         placeholder="Project name"
         value={draft.name}
         onChange={(e) => set('name', e.target.value)}
+        list="existing-project-names"
         required
         autoFocus
       />
+      <datalist id="existing-project-names">
+        {existingNames.map((n) => (
+          <option key={n} value={n} />
+        ))}
+      </datalist>
       <textarea
         placeholder="Description"
         value={draft.description ?? ''}

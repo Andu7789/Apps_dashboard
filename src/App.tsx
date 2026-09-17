@@ -153,6 +153,7 @@ export default function App() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <ProjectForm
               initial={editing ?? undefined}
+              existingNames={Array.from(new Set(projects.map((p) => p.name)))}
               onSave={saveProject}
               onCancel={() => {
                 setFormOpen(false)
