@@ -41,8 +41,12 @@ export default function App() {
     setLoading(false)
   }
 
-  async function saveProject(draft: ProjectDraft) {
+  async function saveProject(rawDraft: ProjectDraft) {
     setError(null)
+    const isFullyScored =
+      rawDraft.ice_impact != null && rawDraft.ice_confidence != null && rawDraft.ice_ease != null
+    const draft =
+      rawDraft.stage === 'idea' && isFullyScored ? { ...rawDraft, stage: 'next' as const } : rawDraft
     if (editing) {
       const { error } = await supabase.from('dashboard_projects').update(draft).eq('id', editing.id)
       if (error) return setError(error.message)

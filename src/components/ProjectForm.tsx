@@ -133,6 +133,9 @@ export function ProjectForm({
           />
         </label>
       </div>
+      {draft.stage === 'idea' && (
+        <p className="hint">Filling in all three scores moves this straight to Next.</p>
+      )}
       <input
         placeholder="URL (repo, doc, site…)"
         value={draft.url ?? ''}
