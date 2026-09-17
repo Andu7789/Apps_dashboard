@@ -77,7 +77,7 @@ export default function App() {
       onFire: projects.filter(isOnFire),
       active: byStage('active'),
       next: byStage('next').sort((a, b) => b.ice_score - a.ice_score),
-      ideas: [...byStage('idea'), ...byStage('backlog')].sort((a, b) => b.ice_score - a.ice_score),
+      ideas: byStage('idea').sort((a, b) => b.ice_score - a.ice_score),
       done: [...byStage('done'), ...byStage('archived')],
     }
   }, [projects])

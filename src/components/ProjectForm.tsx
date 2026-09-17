@@ -78,7 +78,6 @@ export function ProjectForm({
           Stage
           <select value={draft.stage} onChange={(e) => set('stage', e.target.value as Stage)}>
             <option value="idea">Idea</option>
-            <option value="backlog">Backlog</option>
             <option value="next">Next</option>
             <option value="active">Active</option>
             <option value="done">Done</option>

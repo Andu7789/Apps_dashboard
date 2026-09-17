@@ -1,4 +1,4 @@
-export type Stage = 'idea' | 'backlog' | 'next' | 'active' | 'done' | 'archived'
+export type Stage = 'idea' | 'next' | 'active' | 'done' | 'archived'
 export type Health = 'green' | 'amber' | 'red'
 
 export interface Project {
