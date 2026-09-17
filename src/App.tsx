@@ -20,6 +20,7 @@ export default function App() {
   const [editing, setEditing] = useState<Project | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [ideaFilter, setIdeaFilter] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -105,6 +106,12 @@ export default function App() {
       done: [...byStage('done'), ...byStage('archived')],
     }
   }, [projects])
+
+  const ideaNames = useMemo(
+    () => Array.from(new Set(groups.ideas.map((p) => p.name))),
+    [groups.ideas]
+  )
+  const filteredIdeas = ideaFilter ? groups.ideas.filter((p) => p.name === ideaFilter) : groups.ideas
 
   if (session === undefined) return <div className="loading-screen">Loading…</div>
   if (!session) return <Auth />
@@ -221,8 +228,21 @@ export default function App() {
 
           <section className="section">
             <h2>Idea inbox</h2>
+            {ideaNames.length > 0 && (
+              <div className="pill-row">
+                {ideaNames.map((name) => (
+                  <button
+                    key={name}
+                    className={`pill ${ideaFilter === name ? 'active' : ''}`}
+                    onClick={() => setIdeaFilter((f) => (f === name ? null : name))}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            )}
             {groups.ideas.length === 0 && <p className="empty">Capture your next idea here.</p>}
-            {groups.ideas.map((p) => (
+            {filteredIdeas.map((p) => (
               <ProjectRow
                 key={p.id}
                 project={p}
