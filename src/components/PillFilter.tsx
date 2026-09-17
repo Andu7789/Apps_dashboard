@@ -10,6 +10,9 @@ export function PillFilter({
   if (names.length === 0) return null
   return (
     <div className="pill-row">
+      <button className={`pill ${active === null ? 'active' : ''}`} onClick={() => onChange(null)}>
+        All
+      </button>
       {names.map((name) => (
         <button
           key={name}
