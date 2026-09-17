@@ -1,7 +1,25 @@
 .app {
-  max-width: 760px;
+  max-width: 1080px;
   margin: 0 auto;
   padding: 24px 20px 80px;
+}
+
+.now-next-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+main > .section {
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width: 720px) {
+  .now-next-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 header {

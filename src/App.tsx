@@ -178,44 +178,46 @@ export default function App() {
             </section>
           )}
 
-          <section className="section">
-            <h2>
-              Now{' '}
-              <span className={`wip ${groups.active.length > WIP_LIMIT ? 'over' : ''}`}>
-                {groups.active.length}/{WIP_LIMIT}
-              </span>
-            </h2>
-            {groups.active.length === 0 && <p className="empty">Nothing active. Pull from Next.</p>}
-            {groups.active.map((p) => (
-              <ProjectRow
-                key={p.id}
-                project={p}
-                onEdit={() => {
-                  setEditing(p)
-                  setFormOpen(true)
-                }}
-                onReview={() => markReviewed(p)}
-                onDelete={() => deleteProject(p)}
-              />
-            ))}
-          </section>
+          <div className="now-next-row">
+            <section className="section">
+              <h2>
+                Now{' '}
+                <span className={`wip ${groups.active.length > WIP_LIMIT ? 'over' : ''}`}>
+                  {groups.active.length}/{WIP_LIMIT}
+                </span>
+              </h2>
+              {groups.active.length === 0 && <p className="empty">Nothing active. Pull from Next.</p>}
+              {groups.active.map((p) => (
+                <ProjectRow
+                  key={p.id}
+                  project={p}
+                  onEdit={() => {
+                    setEditing(p)
+                    setFormOpen(true)
+                  }}
+                  onReview={() => markReviewed(p)}
+                  onDelete={() => deleteProject(p)}
+                />
+              ))}
+            </section>
 
-          <section className="section">
-            <h2>Next (ranked by ICE)</h2>
-            {groups.next.length === 0 && <p className="empty">Nothing queued.</p>}
-            {groups.next.map((p) => (
-              <ProjectRow
-                key={p.id}
-                project={p}
-                onEdit={() => {
-                  setEditing(p)
-                  setFormOpen(true)
-                }}
-                onReview={() => markReviewed(p)}
-                onDelete={() => deleteProject(p)}
-              />
-            ))}
-          </section>
+            <section className="section">
+              <h2>Next (ranked by ICE)</h2>
+              {groups.next.length === 0 && <p className="empty">Nothing queued.</p>}
+              {groups.next.map((p) => (
+                <ProjectRow
+                  key={p.id}
+                  project={p}
+                  onEdit={() => {
+                    setEditing(p)
+                    setFormOpen(true)
+                  }}
+                  onReview={() => markReviewed(p)}
+                  onDelete={() => deleteProject(p)}
+                />
+              ))}
+            </section>
+          </div>
 
           <section className="section">
             <h2>Idea inbox</h2>
