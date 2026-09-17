@@ -13,6 +13,8 @@ const emptyDraft: ProjectDraft = {
   ice_ease: null,
   deadline: null,
   url: '',
+  repo_full_name: null,
+  repo_pushed_at: null,
   tags: [],
 }
 
@@ -38,6 +40,8 @@ export function ProjectForm({
           ice_ease: initial.ice_ease,
           deadline: initial.deadline,
           url: initial.url ?? '',
+          repo_full_name: initial.repo_full_name,
+          repo_pushed_at: initial.repo_pushed_at,
           tags: initial.tags,
         }
       : emptyDraft
@@ -141,12 +145,30 @@ export function ProjectForm({
         value={draft.url ?? ''}
         onChange={(e) => set('url', e.target.value)}
       />
-      <RepoPicker
-        onPick={(repo) => {
-          set('url', repo.html_url)
-          if (!draft.name) set('name', repo.name)
-        }}
-      />
+      {draft.repo_full_name ? (
+        <p className="hint">
+          Linked to <strong>{draft.repo_full_name}</strong> — staleness tracks its last push.{' '}
+          <button
+            type="button"
+            className="link-button"
+            onClick={() => {
+              set('repo_full_name', null)
+              set('repo_pushed_at', null)
+            }}
+          >
+            Unlink
+          </button>
+        </p>
+      ) : (
+        <RepoPicker
+          onPick={(repo) => {
+            set('url', repo.html_url)
+            set('repo_full_name', repo.full_name)
+            set('repo_pushed_at', repo.pushed_at)
+            if (!draft.name) set('name', repo.name)
+          }}
+        />
+      )}
       <div className="form-actions">
         <button type="button" className="secondary" onClick={onCancel}>
           Cancel

@@ -7,6 +7,7 @@ import { Auth } from './components/Auth'
 import { ProjectForm } from './components/ProjectForm'
 import { ProjectRow } from './components/ProjectRow'
 import { Settings } from './components/Settings'
+import { fetchRepoPushedAt } from './lib/github'
 import './App.css'
 
 const WIP_LIMIT = 3
@@ -39,6 +40,25 @@ export default function App() {
     if (error) setError(error.message)
     else setProjects(data as Project[])
     setLoading(false)
+    if (data) void syncRepoActivity(data as Project[])
+  }
+
+  async function syncRepoActivity(current: Project[]) {
+    const linked = current.filter((p) => p.repo_full_name && (p.stage === 'active' || p.stage === 'next'))
+    if (linked.length === 0) return
+    const { data: settings } = await supabase
+      .from('dashboard_settings')
+      .select('github_token')
+      .maybeSingle()
+    const token = settings?.github_token
+    if (!token) return
+    for (const p of linked) {
+      const pushedAt = await fetchRepoPushedAt(token, p.repo_full_name!)
+      if (pushedAt && pushedAt !== p.repo_pushed_at) {
+        await supabase.from('dashboard_projects').update({ repo_pushed_at: pushedAt }).eq('id', p.id)
+        setProjects((prev) => prev.map((pr) => (pr.id === p.id ? { ...pr, repo_pushed_at: pushedAt } : pr)))
+      }
+    }
   }
 
   async function saveProject(rawDraft: ProjectDraft) {

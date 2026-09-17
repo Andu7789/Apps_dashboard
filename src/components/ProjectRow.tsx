@@ -51,6 +51,11 @@ export function ProjectRow({
             )}
           </div>
           {project.next_action && <div className="next-action">→ {project.next_action}</div>}
+          {project.repo_pushed_at && (
+            <div className="repo-activity" title={project.repo_full_name ?? undefined}>
+              code pushed {daysSince(project.repo_pushed_at)}d ago
+            </div>
+          )}
           {project.deadline && (
             <div className="deadline">
               due {project.deadline}

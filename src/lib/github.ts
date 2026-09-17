@@ -30,3 +30,15 @@ export async function fetchGithubRepos(token: string): Promise<GithubRepo[]> {
   }
   return repos
 }
+
+export async function fetchRepoPushedAt(token: string, fullName: string): Promise<string | null> {
+  const res = await fetch(`https://api.github.com/repos/${fullName}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+    },
+  })
+  if (!res.ok) return null
+  const data = (await res.json()) as { pushed_at?: string }
+  return data.pushed_at ?? null
+}
