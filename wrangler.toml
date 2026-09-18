@@ -7,15 +7,15 @@ directory = "./dist"
 not_found_handling = "single-page-application"
 binding = "ASSETS"
 
-# Fires at both 7am and 8am UTC on Sundays (Cloudflare's cron parser
-# rejects a wildcard hour paired with a restricted weekday, so this
-# uses two fixed hours instead of "0 * * * 0"). The worker only
-# actually sends when the current Europe/London time is 8am, so
-# whichever of these lands on local 8am - 7am UTC in BST (summer),
-# 8am UTC in GMT (winter) - is the one that fires, without needing a
-# manual edit across the clock change.
-[triggers]
-crons = ["0 7 * * 0", "0 8 * * 0"]
+# Cron Trigger is NOT declared here. Wrangler's deploy-time API call to
+# set it was failing with "invalid cron string" for every syntax tried
+# (including Cloudflare's own documented example pattern), which was
+# failing the whole deploy and blocking every other change from going
+# live. Set the schedule instead via Cloudflare dashboard -> apps-dashboard
+# Worker -> Triggers tab -> Cron Triggers -> Add. Two entries, 0 7 * * 0
+# and 0 8 * * 0 (UTC), same DST-safe reasoning as before - the worker's
+# scheduled() handler only actually sends when the current Europe/London
+# time is 8am, so whichever entry lands on local 8am is the one that fires.
 
 [vars]
 SUPABASE_URL = "https://rmooksnngqyzqraeicvr.supabase.co"
