@@ -20,11 +20,13 @@ const emptyDraft: ProjectDraft = {
 
 export function ProjectForm({
   initial,
+  prefill,
   existingNames = [],
   onSave,
   onCancel,
 }: {
   initial?: Project
+  prefill?: Partial<ProjectDraft>
   existingNames?: string[]
   onSave: (draft: ProjectDraft) => void
   onCancel: () => void
@@ -46,7 +48,7 @@ export function ProjectForm({
           repo_pushed_at: initial.repo_pushed_at,
           tags: initial.tags,
         }
-      : emptyDraft
+      : { ...emptyDraft, ...prefill }
   )
 
   function set<K extends keyof ProjectDraft>(key: K, value: ProjectDraft[K]) {
