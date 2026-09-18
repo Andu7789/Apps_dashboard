@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { Project, ProjectDraft, Stage, Health } from '../types'
 import { RepoPicker } from './RepoPicker'
 
@@ -20,15 +20,29 @@ const emptyDraft: ProjectDraft = {
 
 export function ProjectForm({
   initial,
-  existingNames = [],
+  existingProjects = [],
   onSave,
   onCancel,
 }: {
   initial?: Project
-  existingNames?: string[]
+  existingProjects?: Project[]
   onSave: (draft: ProjectDraft) => void
   onCancel: () => void
 }) {
+  const existingNames = useMemo(
+    () => Array.from(new Set(existingProjects.map((p) => p.name))),
+    [existingProjects]
+  )
+  const repoByName = useMemo(() => {
+    const map = new Map<string, Pick<Project, 'repo_full_name' | 'repo_pushed_at' | 'url'>>()
+    for (const p of existingProjects) {
+      if (p.repo_full_name && !map.has(p.name)) {
+        map.set(p.name, { repo_full_name: p.repo_full_name, repo_pushed_at: p.repo_pushed_at, url: p.url })
+      }
+    }
+    return map
+  }, [existingProjects])
+
   const [draft, setDraft] = useState<ProjectDraft>(
     initial
       ? {
@@ -65,6 +79,18 @@ export function ProjectForm({
         placeholder="Project name"
         value={draft.name}
         onChange={(e) => set('name', e.target.value)}
+        onBlur={() => {
+          if (initial || draft.repo_full_name) return
+          const match = repoByName.get(draft.name)
+          if (match) {
+            setDraft((d) => ({
+              ...d,
+              repo_full_name: match.repo_full_name,
+              repo_pushed_at: match.repo_pushed_at,
+              url: match.url ?? d.url,
+            }))
+          }
+        }}
         list="existing-project-names"
         required
         autoFocus

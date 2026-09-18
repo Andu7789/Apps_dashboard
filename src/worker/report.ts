@@ -27,11 +27,26 @@ async function fetchProjects(env: Env): Promise<Project[]> {
   return (await res.json()) as Project[]
 }
 
-async function fetchCommits(since: Date): Promise<Commit[]> {
-  const url = `https://api.github.com/repos/${REPO}/commits?since=${since.toISOString()}&per_page=100`
-  const res = await fetch(url, {
-    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'apps-dashboard-weekly-report' },
+async function fetchGithubToken(env: Env): Promise<string | null> {
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/dashboard_settings?select=github_token&limit=1`, {
+    headers: {
+      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+    },
   })
+  if (!res.ok) return null
+  const rows = (await res.json()) as { github_token: string | null }[]
+  return rows[0]?.github_token ?? null
+}
+
+async function fetchCommitsForRepo(fullName: string, since: Date, token: string | null): Promise<Commit[]> {
+  const url = `https://api.github.com/repos/${fullName}/commits?since=${since.toISOString()}&per_page=100`
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github+json',
+    'User-Agent': 'apps-dashboard-weekly-report',
+  }
+  if (token) headers.Authorization = `Bearer ${token}`
+  const res = await fetch(url, { headers })
   if (!res.ok) return []
   return (await res.json()) as Commit[]
 }
@@ -51,7 +66,23 @@ export async function buildReportHtml(env: Env): Promise<{ subject: string; html
   const now = new Date()
   const weekAgo = new Date(now.getTime() - WEEK_MS)
 
-  const [projects, commits] = await Promise.all([fetchProjects(env), fetchCommits(weekAgo)])
+  const [projects, token] = await Promise.all([fetchProjects(env), fetchGithubToken(env)])
+  const commits = await fetchCommitsForRepo(REPO, weekAgo, token)
+
+  const linkedRepos = Array.from(
+    new Map(
+      projects
+        .filter((p) => p.repo_full_name && p.repo_full_name !== REPO)
+        .map((p) => [p.repo_full_name!, p.name] as const)
+    ).entries()
+  )
+  const repoActivity = await Promise.all(
+    linkedRepos.map(async ([repoFullName, projectName]) => ({
+      projectName,
+      repoFullName,
+      commits: await fetchCommitsForRepo(repoFullName, weekAgo, token),
+    }))
+  )
 
   const created = projects.filter((p) => new Date(p.created_at) >= weekAgo)
   const createdIds = new Set(created.map((p) => p.id))
@@ -94,7 +125,26 @@ export async function buildReportHtml(env: Env): Promise<{ subject: string; html
     )
   )
 
-  const noActivity = created.length + updated.length + done.length + commits.length === 0
+  const repoActivityCount = repoActivity.reduce((sum, r) => sum + r.commits.length, 0)
+  const repoActivityHtml = section(
+    '📦 Repo activity',
+    repoActivity
+      .filter((r) => r.commits.length > 0)
+      .map(
+        (r) =>
+          `<strong>${escapeHtml(r.projectName)}</strong> — ${r.commits.length} commit${r.commits.length === 1 ? '' : 's'}` +
+          `<ul style="margin:4px 0 0;padding-left:18px;">${r.commits
+            .slice(0, 5)
+            .map(
+              (c) =>
+                `<li><a href="${c.html_url}" style="color:#1f8b93;">${escapeHtml(c.commit.message.split('\n')[0])}</a></li>`
+            )
+            .join('')}</ul>`
+      )
+  )
+
+  const noActivity =
+    created.length + updated.length + done.length + commits.length + repoActivityCount === 0
 
   const html = `
     <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a;">
@@ -102,6 +152,7 @@ export async function buildReportHtml(env: Env): Promise<{ subject: string; html
       ${noActivity ? '<p>Quiet week — no project or app changes recorded.</p>' : ''}
       ${projectHtml}
       ${commitHtml}
+      ${repoActivityHtml}
       <p style="margin-top:32px;font-size:12px;opacity:0.6;">
         <a href="https://abdashboard.site" style="color:#1f8b93;">Open your dashboard</a>
       </p>
