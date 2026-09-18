@@ -17,13 +17,17 @@ interface Commit {
 }
 
 async function fetchProjects(env: Env): Promise<Project[]> {
+  const keyLen = env.SUPABASE_SERVICE_ROLE_KEY?.length ?? 0
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/dashboard_projects?select=*`, {
     headers: {
       apikey: env.SUPABASE_SERVICE_ROLE_KEY,
       Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
     },
   })
-  if (!res.ok) throw new Error(`Supabase fetch failed: ${res.status}`)
+  if (!res.ok) {
+    const body = await res.text()
+    throw new Error(`Supabase fetch failed: ${res.status} (key length ${keyLen}) — ${body}`)
+  }
   return (await res.json()) as Project[]
 }
 
