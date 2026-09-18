@@ -1,6 +1,18 @@
 name = "apps-dashboard"
+main = "src/worker/index.ts"
 compatibility_date = "2026-09-17"
 
 [assets]
 directory = "./dist"
 not_found_handling = "single-page-application"
+binding = "ASSETS"
+
+# Fires every hour on Sundays; the worker itself only actually sends
+# the report when the current Europe/London time is 8am, so this
+# stays correct across the BST/GMT clock change without manual edits.
+[triggers]
+crons = ["0 * * * 0"]
+
+[vars]
+SUPABASE_URL = "https://rmooksnngqyzqraeicvr.supabase.co"
+REPORT_TO_EMAIL = "andrew.britain@gmail.com"

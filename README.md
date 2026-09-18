@@ -61,3 +61,30 @@ npm run deploy   # builds, then `wrangler deploy`
 
    Magic-link sign-in will fail on the live domain until this is done
    (it currently points at `http://localhost:5173`).
+
+## Weekly email report
+
+Every Sunday at 8am (Europe/London, DST-safe — see `src/worker/index.ts`),
+the Worker's `scheduled` handler emails a digest of the week's project
+activity (new/updated/done, what's on fire, next up by ICE score) and app
+commits to `REPORT_TO_EMAIL` (set in `wrangler.toml`), sent via
+[Resend](https://resend.com).
+
+Two secrets need to be set once — **Project → Settings → Variables and
+Secrets → add**, type **Secret** (not plaintext):
+
+- `SUPABASE_SERVICE_ROLE_KEY` — Supabase dashboard → Project Settings →
+  API → `service_role` key. Needed because the scheduled job runs with no
+  logged-in user, so it reads via the service role (bypasses RLS) rather
+  than the anon key.
+- `RESEND_API_KEY` — sign up at resend.com (free tier: 3,000 emails/month,
+  plenty for one email a week) → API Keys → create one. No domain
+  verification needed to start — it sends from Resend's shared
+  `onboarding@resend.dev` sender, which works out of the box.
+
+The cron trigger (`[triggers]` in `wrangler.toml`) deploys automatically
+with the next push — no separate dashboard step for that part.
+
+To test without waiting for Sunday, temporarily change the `=== 8` check
+in `isReportTime()` (`src/worker/index.ts`) to the current London hour,
+push, wait for the next hourly tick, then revert.
