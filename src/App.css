@@ -318,16 +318,6 @@ button.danger {
   opacity: 0.65;
 }
 
-.voice-transcript {
-  min-height: 80px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
 .hint a {
   color: var(--accent);
 }

@@ -8,18 +8,10 @@ import { ProjectForm } from './components/ProjectForm'
 import { ProjectRow } from './components/ProjectRow'
 import { Settings } from './components/Settings'
 import { PillFilter } from './components/PillFilter'
-import { VoiceCapture } from './components/VoiceCapture'
 import { fetchRepoPushedAt } from './lib/github'
 import './App.css'
 
 const WIP_LIMIT = 3
-
-function draftFromTranscript(transcript: string): Partial<ProjectDraft> {
-  const words = transcript.split(/\s+/).filter(Boolean)
-  const firstFewWords = words.slice(0, 6).join(' ')
-  const name = words.length > 6 ? firstFewWords + '…' : firstFewWords
-  return { name, description: transcript }
-}
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
@@ -27,8 +19,6 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Project | null>(null)
-  const [prefill, setPrefill] = useState<Partial<ProjectDraft> | undefined>(undefined)
-  const [voiceOpen, setVoiceOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [ideaFilter, setIdeaFilter] = useState<string | null>(null)
@@ -90,7 +80,6 @@ export default function App() {
     }
     setFormOpen(false)
     setEditing(null)
-    setPrefill(undefined)
     void loadProjects()
   }
 
@@ -144,18 +133,10 @@ export default function App() {
           <button
             onClick={() => {
               setEditing(null)
-              setPrefill(undefined)
               setFormOpen(true)
             }}
           >
             + New
-          </button>
-          <button
-            className="secondary"
-            onClick={() => setVoiceOpen(true)}
-            title="Capture an idea by voice"
-          >
-            🎤
           </button>
           <button className="secondary" onClick={() => setSettingsOpen(true)}>
             Settings
@@ -176,34 +157,16 @@ export default function App() {
         </div>
       )}
 
-      {voiceOpen && (
-        <div className="modal-overlay" onClick={() => setVoiceOpen(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <VoiceCapture
-              onCancel={() => setVoiceOpen(false)}
-              onDone={(transcript) => {
-                setVoiceOpen(false)
-                setEditing(null)
-                setPrefill(draftFromTranscript(transcript))
-                setFormOpen(true)
-              }}
-            />
-          </div>
-        </div>
-      )}
-
       {formOpen && (
         <div className="modal-overlay" onClick={() => setFormOpen(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <ProjectForm
               initial={editing ?? undefined}
-              prefill={prefill}
               existingNames={Array.from(new Set(projects.map((p) => p.name)))}
               onSave={saveProject}
               onCancel={() => {
                 setFormOpen(false)
                 setEditing(null)
-                setPrefill(undefined)
               }}
             />
           </div>
