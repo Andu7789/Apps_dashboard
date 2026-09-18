@@ -66,6 +66,29 @@ function section(title: string, rows: string[]): string {
     .join('')}</ul>`
 }
 
+function entryDetail(p: Project): string {
+  return p.next_action || p.description || '(no next action or description set)'
+}
+
+function groupedSection(title: string, items: Project[]): string {
+  if (items.length === 0) return ''
+  const groups = new Map<string, Project[]>()
+  for (const p of items) {
+    const list = groups.get(p.name) ?? []
+    list.push(p)
+    groups.set(p.name, list)
+  }
+  const rows = Array.from(groups.entries()).map(([name, group]) => {
+    const heading =
+      group.length > 1 ? `<strong>${escapeHtml(name)}</strong> (${group.length} entries)` : `<strong>${escapeHtml(name)}</strong>`
+    const details = group
+      .map((p) => `<li style="margin-bottom:2px;">${escapeHtml(entryDetail(p))} <span style="opacity:0.6;">(${p.stage})</span></li>`)
+      .join('')
+    return `${heading}<ul style="margin:4px 0 0;padding-left:18px;">${details}</ul>`
+  })
+  return section(title, rows)
+}
+
 export async function buildReportHtml(env: Env): Promise<{ subject: string; html: string }> {
   const now = new Date()
   const weekAgo = new Date(now.getTime() - WEEK_MS)
@@ -99,18 +122,9 @@ export async function buildReportHtml(env: Env): Promise<{ subject: string; html
     .slice(0, 3)
 
   const projectHtml = [
-    section(
-      '🆕 New this week',
-      created.map((p) => escapeHtml(p.name))
-    ),
-    section(
-      '↻ Updated this week',
-      updated.map((p) => `${escapeHtml(p.name)} <span style="opacity:0.6;">(${p.stage})</span>`)
-    ),
-    section(
-      '✅ Done this week',
-      done.map((p) => escapeHtml(p.name))
-    ),
+    groupedSection('🆕 New this week', created),
+    groupedSection('↻ Updated this week', updated),
+    groupedSection('✅ Done this week', done),
     section(
       '🔥 Currently on fire',
       onFire.map((p) => escapeHtml(p.name))
