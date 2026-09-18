@@ -6,6 +6,9 @@ compatibility_date = "2026-09-17"
 directory = "./dist"
 not_found_handling = "single-page-application"
 binding = "ASSETS"
+# Without this, Cloudflare serves assets/SPA-fallback before the Worker
+# ever runs, so /api/* routes in src/worker/index.ts never get hit.
+run_worker_first = ["/api/*"]
 
 # Cron Trigger is NOT declared here. Wrangler's deploy-time API call to
 # set it was failing with "invalid cron string" for every syntax tried
