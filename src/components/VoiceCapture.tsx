@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
 interface SpeechResultEvent extends Event {
-  resultIndex: number
   results: {
     length: number
     [index: number]: { isFinal: boolean; [alt: number]: { transcript: string } }
@@ -31,6 +30,7 @@ export function VoiceCapture({
   const [supported, setSupported] = useState(true)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const finalTranscriptRef = useRef('')
+  const manualStopRef = useRef(false)
 
   useEffect(() => {
     const w = window as unknown as {
@@ -42,27 +42,53 @@ export function VoiceCapture({
       setSupported(false)
       return
     }
+
+    // Non-continuous, auto-restarting: some mobile browsers re-deliver "final"
+    // results as full cumulative restatements in continuous mode, causing
+    // stutter/duplication. One utterance per session, restarted on pause,
+    // avoids that entirely.
     const recognition = new Impl()
-    recognition.continuous = true
+    recognition.continuous = false
     recognition.interimResults = true
     recognition.lang = 'en-US'
+
     recognition.onresult = (event) => {
-      let interimText = ''
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const res = event.results[i]
-        if (res.isFinal) finalTranscriptRef.current += res[0].transcript + ' '
-        else interimText = res[0].transcript
+      const last = event.results[event.results.length - 1]
+      const text = last[0].transcript
+      if (last.isFinal) {
+        finalTranscriptRef.current = (finalTranscriptRef.current + ' ' + text).trim()
+        setTranscript(finalTranscriptRef.current)
+      } else {
+        setTranscript((finalTranscriptRef.current + ' ' + text).trim())
       }
-      setTranscript((finalTranscriptRef.current + interimText).trim())
     }
-    recognition.onend = () => setListening(false)
+    recognition.onerror = () => {
+      manualStopRef.current = true
+    }
+    recognition.onend = () => {
+      if (manualStopRef.current) {
+        setListening(false)
+      } else {
+        try {
+          recognition.start()
+        } catch {
+          setListening(false)
+        }
+      }
+    }
+
     recognitionRef.current = recognition
+    manualStopRef.current = false
     recognition.start()
     setListening(true)
-    return () => recognition.stop()
+    return () => {
+      manualStopRef.current = true
+      recognition.stop()
+    }
   }, [])
 
   function stop() {
+    manualStopRef.current = true
     recognitionRef.current?.stop()
     setListening(false)
   }
