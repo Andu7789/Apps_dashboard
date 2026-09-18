@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 interface SpeechResultEvent extends Event {
+  resultIndex: number
   results: {
     length: number
     [index: number]: { isFinal: boolean; [alt: number]: { transcript: string } }
@@ -29,6 +30,7 @@ export function VoiceCapture({
   const [listening, setListening] = useState(false)
   const [supported, setSupported] = useState(true)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
+  const finalTranscriptRef = useRef('')
 
   useEffect(() => {
     const w = window as unknown as {
@@ -45,14 +47,13 @@ export function VoiceCapture({
     recognition.interimResults = true
     recognition.lang = 'en-US'
     recognition.onresult = (event) => {
-      let finalText = ''
       let interimText = ''
-      for (let i = 0; i < event.results.length; i++) {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
         const res = event.results[i]
-        if (res.isFinal) finalText += res[0].transcript + ' '
-        else interimText += res[0].transcript
+        if (res.isFinal) finalTranscriptRef.current += res[0].transcript + ' '
+        else interimText = res[0].transcript
       }
-      setTranscript((finalText + interimText).trim())
+      setTranscript((finalTranscriptRef.current + interimText).trim())
     }
     recognition.onend = () => setListening(false)
     recognitionRef.current = recognition

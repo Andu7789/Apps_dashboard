@@ -15,9 +15,9 @@ import './App.css'
 const WIP_LIMIT = 3
 
 function draftFromTranscript(transcript: string): Partial<ProjectDraft> {
-  const clauseMatch = transcript.match(/^(.+?)[.!?](\s|$)/)
-  const firstClause = clauseMatch ? clauseMatch[1] : transcript.split(/\s+/).slice(0, 8).join(' ')
-  const name = firstClause.length > 60 ? firstClause.slice(0, 60) + '…' : firstClause
+  const words = transcript.split(/\s+/).filter(Boolean)
+  const firstFewWords = words.slice(0, 6).join(' ')
+  const name = words.length > 6 ? firstFewWords + '…' : firstFewWords
   return { name, description: transcript }
 }
 
