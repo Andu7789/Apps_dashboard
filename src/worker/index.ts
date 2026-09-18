@@ -13,6 +13,20 @@ function isReportTime(now: Date): boolean {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url)
+    if (url.pathname === '/api/test-report') {
+      // Manual trigger for testing, since the cron only fires Sundays.
+      // Gated on knowing REPORT_TO_EMAIL rather than a public open route.
+      if (url.searchParams.get('email') !== env.REPORT_TO_EMAIL) {
+        return new Response('Not found', { status: 404 })
+      }
+      try {
+        await sendReportEmail(env)
+        return new Response('Report sent.')
+      } catch (err) {
+        return new Response(`Failed: ${err instanceof Error ? err.message : String(err)}`, { status: 500 })
+      }
+    }
     return env.ASSETS.fetch(request)
   },
 
