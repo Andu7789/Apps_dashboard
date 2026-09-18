@@ -7,11 +7,15 @@ directory = "./dist"
 not_found_handling = "single-page-application"
 binding = "ASSETS"
 
-# Fires every hour on Sundays; the worker itself only actually sends
-# the report when the current Europe/London time is 8am, so this
-# stays correct across the BST/GMT clock change without manual edits.
+# Fires at both 7am and 8am UTC on Sundays (Cloudflare's cron parser
+# rejects a wildcard hour paired with a restricted weekday, so this
+# uses two fixed hours instead of "0 * * * 0"). The worker only
+# actually sends when the current Europe/London time is 8am, so
+# whichever of these lands on local 8am - 7am UTC in BST (summer),
+# 8am UTC in GMT (winter) - is the one that fires, without needing a
+# manual edit across the clock change.
 [triggers]
-crons = ["0 * * * 0"]
+crons = ["0 7 * * 0", "0 8 * * 0"]
 
 [vars]
 SUPABASE_URL = "https://rmooksnngqyzqraeicvr.supabase.co"
