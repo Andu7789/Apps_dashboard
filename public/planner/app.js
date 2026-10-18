@@ -302,6 +302,18 @@ async function bulkMove() {
   if (await run(sb.from('pl_tasks').update({ project_id: projectId }).in('id', ids))) toast(`Moved ${ids.length} task${ids.length === 1 ? '' : 's'} to ${name}`);
 }
 
+async function bulkDelete() {
+  const ids = [...state.selected].filter((id) => state.tasks.has(id));
+  if (!ids.length) return;
+  const label = ids.length === 1 ? `"${state.tasks.get(ids[0]).title}"` : `${ids.length} tasks`;
+  if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
+  for (const id of ids) state.tasks.delete(id);
+  state.deps = state.deps.filter((d) => !ids.includes(d.task_id) && !ids.includes(d.depends_on_id));
+  state.selected.clear();
+  render();
+  await run(sb.from('pl_tasks').delete().in('id', ids), `Deleted ${ids.length === 1 ? '1 task' : `${ids.length} tasks`}`);
+}
+
 async function deleteTask(id) {
   const t = state.tasks.get(id);
   if (!t || !confirm(`Delete "${t.title}"? This cannot be undone.`)) return;
@@ -401,7 +413,7 @@ function renderList() {
   const allShown = tasks.length && tasks.every((t) => state.selected.has(t.id));
   const bar = sel.length ? `<div class="bulkbar" role="region" aria-label="Bulk actions"><strong>${sel.length} selected</strong>
     <select id="bulkProject" aria-label="Move selected tasks to project"><option value="_">Move to project...</option><option value="">No project</option>${[...state.projects.values()].filter((p) => !p.archived).map((p) => `<option value="${p.id}">${esc(p.emoji)} ${esc(p.name)}</option>`).join('')}</select>
-    <button class="btn primary" data-bulkmove>Move</button><button class="link" data-bulkclear>Clear</button></div>` : '';
+    <button class="btn primary" data-bulkmove>Move</button><button class="btn danger" data-bulkdelete>Delete</button><button class="link" data-bulkclear>Clear</button></div>` : '';
   return `${bar}<div class="table-wrap"><table class="table"><thead><tr><th><input type="checkbox" data-selall ${allShown ? 'checked' : ''} aria-label="Select all shown tasks"></th><th>Task</th><th>Project</th><th>Status</th><th>Who</th><th>Due</th><th>Priority</th></tr></thead><tbody>
     ${tasks.map((t) => {
       const p = t.project_id ? state.projects.get(t.project_id) : null;
@@ -918,6 +930,7 @@ function bindApp() {
   });
   view.addEventListener('click', (e) => {
     if (e.target.closest('[data-bulkmove]')) bulkMove();
+    else if (e.target.closest('[data-bulkdelete]')) bulkDelete();
     else if (e.target.closest('[data-bulkclear]')) { state.selected.clear(); render(); }
   });
   view.addEventListener('submit', (e) => {
