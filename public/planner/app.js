@@ -62,7 +62,7 @@ try {
 const pendingJoin = () => { try { return localStorage.getItem('planner-join') || ''; } catch { return ''; } };
 
 const state = {
-  user: null, ws: null, members: [], invites: [], me: null,
+  user: null, ws: null, members: [], invites: [], selected: new Set(), me: null,
   projects: new Map(), tasks: new Map(), deps: [], comments: [], activity: [],
   view: 'board', fProject: 'all', fWho: 'all', q: '', openTask: null, offline: false,
 };
@@ -289,6 +289,19 @@ async function addTask(status, title) {
   await run(sb.from('pl_tasks').insert({ id, ...row }));
 }
 
+async function bulkMove() {
+  const target = $('#bulkProject')?.value;
+  if (target === '_' || target === undefined) { toast('Choose a project to move them to', true); return; }
+  const ids = [...state.selected].filter((id) => state.tasks.has(id));
+  if (!ids.length) return;
+  const projectId = target || null;
+  for (const id of ids) state.tasks.get(id).project_id = projectId;
+  state.selected.clear();
+  render();
+  const name = projectId ? state.projects.get(projectId).name : 'No project';
+  if (await run(sb.from('pl_tasks').update({ project_id: projectId }).in('id', ids))) toast(`Moved ${ids.length} task${ids.length === 1 ? '' : 's'} to ${name}`);
+}
+
 async function deleteTask(id) {
   const t = state.tasks.get(id);
   if (!t || !confirm(`Delete "${t.title}"? This cannot be undone.`)) return;
@@ -384,12 +397,17 @@ function renderBoard() {
 function renderList() {
   const tasks = visibleTasks().sort((a, b) => STATUSES.findIndex((s) => s[0] === a.status) - STATUSES.findIndex((s) => s[0] === b.status) || b.priority - a.priority || a.position - b.position);
   if (!tasks.length) return '<div class="empty">No tasks match these filters.</div>';
-  return `<div class="table-wrap"><table class="table"><thead><tr><th>Task</th><th>Project</th><th>Status</th><th>Who</th><th>Due</th><th>Priority</th></tr></thead><tbody>
+  const sel = [...state.selected].filter((id) => state.tasks.has(id));
+  const allShown = tasks.length && tasks.every((t) => state.selected.has(t.id));
+  const bar = sel.length ? `<div class="bulkbar" role="region" aria-label="Bulk actions"><strong>${sel.length} selected</strong>
+    <select id="bulkProject" aria-label="Move selected tasks to project"><option value="_">Move to project...</option><option value="">No project</option>${[...state.projects.values()].filter((p) => !p.archived).map((p) => `<option value="${p.id}">${esc(p.emoji)} ${esc(p.name)}</option>`).join('')}</select>
+    <button class="btn primary" data-bulkmove>Move</button><button class="link" data-bulkclear>Clear</button></div>` : '';
+  return `${bar}<div class="table-wrap"><table class="table"><thead><tr><th><input type="checkbox" data-selall ${allShown ? 'checked' : ''} aria-label="Select all shown tasks"></th><th>Task</th><th>Project</th><th>Status</th><th>Who</th><th>Due</th><th>Priority</th></tr></thead><tbody>
     ${tasks.map((t) => {
       const p = t.project_id ? state.projects.get(t.project_id) : null;
       const due = dueInfo(t);
       const blockers = t.status === 'done' ? [] : openBlockers(t.id);
-      return `<tr data-id="${t.id}"><td><button type="button" class="link" data-open="${t.id}">${esc(t.title)}</button> ${blockers.length ? `<span class="pill bad">Waiting on ${blockers.length}</span>` : ''}</td>
+      return `<tr data-id="${t.id}"><td><input type="checkbox" data-sel="${t.id}" ${state.selected.has(t.id) ? 'checked' : ''} aria-label="Select ${esc(t.title)}"></td><td><button type="button" class="link" data-open="${t.id}">${esc(t.title)}</button> ${blockers.length ? `<span class="pill bad">Waiting on ${blockers.length}</span>` : ''}</td>
         <td>${p ? `${esc(p.emoji)} ${esc(p.name)}` : '<span class="muted">None</span>'}</td>
         <td><span class="pill ${t.status === 'done' ? 'ok' : ''}">${STATUS_LABEL[t.status]}</span></td>
         <td>${avatars(t.assignees)}</td><td>${due ? `<span class="pill ${due.cls}">${esc(due.label)}</span>` : ''}</td><td>${PRIOS[t.priority]}</td></tr>`;
@@ -581,9 +599,24 @@ function openProjectDlg(id) {
       <label>Description<textarea name="description">${esc(p?.description || '')}</textarea></label>
       ${p ? `<label class="row" style="flex-direction:row;align-items:center"><input type="checkbox" name="archived" ${p.archived ? 'checked' : ''} style="min-height:auto"> Archived (hides it and its tasks from the board)</label>` : ''}
     </div>
-    <div class="dlg-foot"><button class="btn" value="cancel" type="button" data-close>Cancel</button><button class="btn primary" type="submit">${p ? 'Save' : 'Create project'}</button></div></form>`;
+    <div class="dlg-foot">${p ? '<button class="btn danger" type="button" data-del>Delete project</button>' : '<span></span>'}<span class="row"><button class="btn" value="cancel" type="button" data-close>Cancel</button><button class="btn primary" type="submit">${p ? 'Save' : 'Create project'}</button></span></div></form>`;
   dlg.showModal();
   $('[data-close]', dlg).addEventListener('click', () => dlg.close());
+  $('[data-del]', dlg)?.addEventListener('click', async () => {
+    const tasks = taskList().filter((t) => t.project_id === p.id);
+    if (!confirm(`Delete the project "${p.name}"?${tasks.length ? ` Its ${tasks.length} task${tasks.length === 1 ? '' : 's'} will not be deleted yet.` : ''}`)) return;
+    const alsoTasks = tasks.length > 0 && confirm(`Also delete its ${tasks.length} task${tasks.length === 1 ? '' : 's'}?\n\nOK deletes them. Cancel keeps them under "No project".`);
+    dlg.close();
+    state.projects.delete(p.id);
+    if (state.fProject === p.id) state.fProject = 'all';
+    for (const t of tasks) {
+      if (alsoTasks) { state.tasks.delete(t.id); state.deps = state.deps.filter((d) => d.task_id !== t.id && d.depends_on_id !== t.id); }
+      else t.project_id = null;
+    }
+    render();
+    if (alsoTasks) await run(sb.from('pl_tasks').delete().eq('project_id', p.id));
+    await run(sb.from('pl_projects').delete().eq('id', p.id), 'Project deleted');
+  });
   $('#projForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.target;
@@ -611,12 +644,23 @@ function openTemplateDlg() {
   dlg.innerHTML = `<form class="dlg" id="tplForm"><div class="dlg-head"><h2 id="tpTitle" style="margin:0">Start from a template</h2></div>
     <div class="dlg-body">
       <div class="stack">${TEMPLATES.map((t, i) => `<label class="item" style="flex-direction:row;align-items:flex-start;color:var(--text)"><input type="radio" name="tpl" value="${t.id}" ${i === 0 ? 'checked' : ''} style="min-height:auto;margin-top:4px"><span><strong>${esc(t.name)}</strong> <span class="muted">(${t.tasks.length} tasks, with dependencies)</span><br><span class="muted" style="font-weight:400">${esc(t.desc)}</span></span></label>`).join('')}</div>
-      <label>Add to project<select name="project"><option value="">Create a new project from this</option>${projects.map((p) => `<option value="${p.id}" ${state.fProject === p.id ? 'selected' : ''}>${esc(p.emoji)} ${esc(p.name)}</option>`).join('')}</select></label>
-      <label>New project name (if creating)<input name="pname" placeholder="e.g. Recipes demo"></label>
+      <label>Where should the tasks go?<select name="project"><option value="">A new project</option>${projects.map((p) => `<option value="${p.id}" ${state.fProject === p.id ? 'selected' : ''}>Add to ${esc(p.emoji)} ${esc(p.name)}</option>`).join('')}</select></label>
+      <label id="tplNameLbl">Name for the new project<input name="pname" placeholder="e.g. Recipes demo"></label>
+      <p class="hint" id="tplHint"></p>
     </div>
     <div class="dlg-foot"><button class="btn" type="button" data-close>Cancel</button><button class="btn primary" type="submit">Add tasks</button></div></form>`;
   dlg.showModal();
   $('[data-close]', dlg).addEventListener('click', () => dlg.close());
+  const syncTpl = () => {
+    const f = $('#tplForm');
+    const existing = state.projects.get(f.project.value);
+    $('#tplNameLbl').hidden = !!existing;
+    $('#tplHint').textContent = existing
+      ? `The tasks will be added to "${existing.name}". No new project is created.`
+      : 'A new project will be created for these tasks. Pick an existing project above to avoid that.';
+  };
+  $('#tplForm').addEventListener('change', syncTpl);
+  syncTpl();
   $('#tplForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.target;
@@ -863,6 +907,18 @@ function bindApp() {
     if (ep) openProjectDlg(ep.dataset.editProject);
     const gp = e.target.closest('[data-goto-project]');
     if (gp) { state.fProject = gp.dataset.gotoProject; state.view = 'board'; render(); }
+  });
+  view.addEventListener('change', (e) => {
+    const el = e.target;
+    if (el.dataset.sel) { el.checked ? state.selected.add(el.dataset.sel) : state.selected.delete(el.dataset.sel); render(); }
+    else if ('selall' in el.dataset) {
+      for (const t of visibleTasks()) el.checked ? state.selected.add(t.id) : state.selected.delete(t.id);
+      render();
+    }
+  });
+  view.addEventListener('click', (e) => {
+    if (e.target.closest('[data-bulkmove]')) bulkMove();
+    else if (e.target.closest('[data-bulkclear]')) { state.selected.clear(); render(); }
   });
   view.addEventListener('submit', (e) => {
     const f = e.target.closest('.quick');
