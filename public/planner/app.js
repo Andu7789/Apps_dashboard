@@ -133,8 +133,8 @@ function visibleTasks() {
     if (state.fProject === 'all') { if (p && p.archived) return false; }
     else if (state.fProject === 'none') { if (t.project_id) return false; }
     else if (t.project_id !== state.fProject) return false;
-    if (state.fWho === 'me' && !t.assignees.includes(state.user.id)) return false;
-    if (state.fWho === 'none' && t.assignees.length) return false;
+    if (state.fWho === 'none') { if (t.assignees.length) return false; }
+    else if (state.fWho !== 'all' && !t.assignees.includes(state.fWho)) return false;
     if (q && !(`${t.title} ${t.description} ${t.labels.join(' ')}`.toLowerCase().includes(q))) return false;
     return true;
   });
@@ -280,7 +280,7 @@ async function addTask(status, title) {
   const t = {
     id: uid(), workspace_id: state.ws.id, project_id: ['all', 'none'].includes(state.fProject) ? null : state.fProject,
     title, description: '', status, position: nextPosition(status), priority: 1, due_date: null,
-    assignees: state.fWho === 'me' ? [state.user.id] : [], labels: [], checklist: [],
+    assignees: !['all', 'none'].includes(state.fWho) ? [state.fWho] : [], labels: [], checklist: [],
     created_by: state.user.id, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), completed_at: null,
   };
   state.tasks.set(t.id, t);
@@ -334,8 +334,13 @@ function renderChrome() {
   const cur = state.fProject;
   sel.innerHTML = `<option value="all">All projects</option>${projOpts.map((p) => `<option value="${p.id}">${esc(p.emoji)} ${esc(p.name)}</option>`).join('')}<option value="none">No project</option>`;
   sel.value = cur;
-  $('#fWho').innerHTML = [['all', 'Everyone'], ['me', 'Mine'], ['none', 'Unassigned']]
-    .map(([k, l]) => `<button type="button" data-who="${k}" aria-pressed="${state.fWho === k}">${l}</button>`).join('');
+  if (!['all', 'none'].includes(state.fWho) && !member(state.fWho)) state.fWho = 'all';
+  const count = (id) => taskList().filter((t) => t.status !== 'done' && t.assignees.includes(id)).length;
+  const who = [['all', 'Everyone'],
+    ...people().map((m) => [m.user_id, `${m.user_id === state.user.id ? 'Me' : m.display_name}${m.pending ? ' (invited)' : ''}`, m]),
+    ['none', 'Unassigned']];
+  $('#fWho').innerHTML = who.map(([k, l, m]) =>
+    `<button type="button" data-who="${k}" aria-pressed="${state.fWho === k}">${m ? avatar(m) : ''}${esc(l)}${m ? ` <span class="muted">${count(k)}</span>` : ''}</button>`).join('');
   $('#meBtn').innerHTML = avatar(state.me);
   $('#toolbar').hidden = state.view === 'activity';
   if (state.offline && !$('#offlineBar')) {

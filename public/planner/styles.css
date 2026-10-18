@@ -219,3 +219,7 @@ textarea { width: 100%; min-height: 90px; resize: vertical; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
 
 .avatar.pending { border: 2px dashed var(--muted); opacity: .75; }
+
+.seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.seg button { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.seg button .avatar { width: 20px; height: 20px; font-size: 10px; border: 0; }
