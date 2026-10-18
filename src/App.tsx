@@ -130,6 +130,9 @@ export default function App() {
       <header>
         <h1>Project Dashboard</h1>
         <div className="header-actions">
+          <a className="button-link" href="/planner/">
+            🗂️ Planner
+          </a>
           <button
             onClick={() => {
               setEditing(null)

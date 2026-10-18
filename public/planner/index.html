@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AB Planner</title>
+<meta name="description" content="Shared kanban board with dependencies, assignees and notifications.">
+<meta name="theme-color" content="#101218" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Planner">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app" hidden>
+  <header class="topbar">
+    <a class="brand" href="../" aria-label="Back to Andrew's Apps"><span class="brand-mark" aria-hidden="true">▥</span><span class="brand-name">Planner</span></a>
+    <nav class="tabs" id="tabs" aria-label="Views"></nav>
+    <div class="top-actions">
+      <button class="icon-btn" id="bell" aria-label="Activity and notifications">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5-6.7V3a2 2 0 1 0-4 0v1.3A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/></svg>
+        <span class="badge" id="bellBadge" hidden></span>
+      </button>
+      <button class="avatar-btn" id="meBtn" aria-label="Settings"></button>
+    </div>
+  </header>
+
+  <section class="toolbar" id="toolbar" aria-label="Filters">
+    <select id="fProject" aria-label="Project"></select>
+    <div class="seg" id="fWho" role="group" aria-label="Show tasks for"></div>
+    <input id="fSearch" type="search" placeholder="Search tasks" aria-label="Search tasks">
+    <button class="btn" id="newProject">+ Project</button>
+    <button class="btn" id="templateBtn">Templates</button>
+  </section>
+
+  <main id="view"></main>
+</div>
+
+<div id="auth" class="screen" hidden>
+  <form id="authForm" class="panel" novalidate>
+    <div class="brand big"><span class="brand-mark" aria-hidden="true">▥</span> AB Planner</div>
+    <p class="muted" id="authLead">Sign in to see the shared board.</p>
+    <label>Email<input name="email" type="email" autocomplete="email" required></label>
+    <button class="btn primary" type="submit" id="authMagic">Email me a sign-in link</button>
+    <p class="msg" id="authMsg" role="status"></p>
+    <details id="pwBox"><summary class="muted">Use a password instead</summary>
+      <label>Password<input name="password" type="password" autocomplete="current-password" minlength="6"></label>
+      <button class="btn" type="button" id="authSubmit">Sign in</button>
+      <button class="link" type="button" id="authToggle">New here? Create an account</button>
+    </details>
+  </form>
+</div>
+
+<div id="onboard" class="screen" hidden>
+  <div class="panel">
+    <div class="brand big"><span class="brand-mark" aria-hidden="true">▥</span> Set up your workspace</div>
+    <label>Your name<input id="obName" autocomplete="name" placeholder="e.g. Andrew"></label>
+    <div class="split">
+      <form id="obCreate">
+        <h3>Start a new workspace</h3>
+        <label>Workspace name<input id="obWs" value="Andrew and Rachel"></label>
+        <button class="btn primary" type="submit">Create</button>
+      </form>
+      <form id="obJoin">
+        <h3>Join with an invite code</h3>
+        <label>Invite code<input id="obCode" placeholder="8 characters" autocapitalize="characters"></label>
+        <button class="btn" type="submit">Join</button>
+      </form>
+    </div>
+    <p class="msg" id="obMsg" role="status"></p>
+    <button class="link" id="obSignOut" type="button">Sign out</button>
+  </div>
+</div>
+
+<dialog id="taskDlg" aria-labelledby="tdTitle"></dialog>
+<dialog id="projDlg" aria-labelledby="pdTitle"></dialog>
+<dialog id="setDlg" aria-labelledby="sdTitle"></dialog>
+<dialog id="tplDlg" aria-labelledby="tpTitle"></dialog>
+
+<div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
