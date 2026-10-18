@@ -62,7 +62,7 @@ try {
 const pendingJoin = () => { try { return localStorage.getItem('planner-join') || ''; } catch { return ''; } };
 
 const state = {
-  user: null, ws: null, members: [], me: null,
+  user: null, ws: null, members: [], invites: [], me: null,
   projects: new Map(), tasks: new Map(), deps: [], comments: [], activity: [],
   view: 'board', fProject: 'all', fWho: 'all', q: '', openTask: null, offline: false,
 };
@@ -81,9 +81,12 @@ function toast(msg, isErr = false, action) {
 }
 
 /* ---------- helpers ---------- */
-const member = (id) => state.members.find((m) => m.user_id === id);
+const pendingAsMember = (i) => ({ user_id: i.id, display_name: i.display_name, colour: i.colour, pending: true, email: i.email });
+const member = (id) => state.members.find((m) => m.user_id === id)
+  || (() => { const i = state.invites.find((x) => x.id === id); return i ? pendingAsMember(i) : undefined; })();
+const people = () => [...state.members, ...state.invites.map(pendingAsMember)];
 const initials = (n) => (n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
-const avatar = (m) => m ? `<span class="avatar" style="background:${esc(m.colour)}" title="${esc(m.display_name)}">${esc(initials(m.display_name))}</span>` : '';
+const avatar = (m) => m ? `<span class="avatar${m.pending ? ' pending' : ''}" style="background:${esc(m.colour)}" title="${esc(m.display_name)}${m.pending ? ' (invited)' : ''}">${esc(initials(m.display_name))}</span>` : '';
 const avatars = (ids) => ids.length ? `<span class="avatars">${ids.map((i) => avatar(member(i))).join('')}</span>` : '';
 const taskList = () => [...state.tasks.values()];
 
@@ -149,31 +152,33 @@ async function loadWorkspace() {
 async function loadAll() {
   const ws = state.ws.id;
   try {
-    const [m, p, t, d, c, a] = await Promise.all([
+    const [m, p, t, d, c, a, inv] = await Promise.all([
       sb.from('pl_members').select('*').eq('workspace_id', ws),
       sb.from('pl_projects').select('*').eq('workspace_id', ws).order('created_at'),
       sb.from('pl_tasks').select('*').eq('workspace_id', ws),
       sb.from('pl_dependencies').select('*').eq('workspace_id', ws),
       sb.from('pl_comments').select('*').eq('workspace_id', ws).order('created_at'),
       sb.from('pl_activity').select('*').eq('workspace_id', ws).order('created_at', { ascending: false }).limit(80),
+      sb.from('pl_invites').select('*').eq('workspace_id', ws),
     ]);
-    const err = [m, p, t, d, c, a].find((r) => r.error);
+    const err = [m, p, t, d, c, a, inv].find((r) => r.error);
     if (err) throw err.error;
     state.members = m.data;
+    state.invites = inv.data;
     state.projects = new Map(p.data.map((x) => [x.id, x]));
     state.tasks = new Map(t.data.map((x) => [x.id, x]));
     state.deps = d.data;
     state.comments = c.data;
     state.activity = a.data;
     state.offline = false;
-    try { localStorage.setItem('planner-snapshot', JSON.stringify({ ws: state.ws, members: m.data, projects: p.data, tasks: t.data, deps: d.data, comments: c.data, activity: a.data })); } catch { /* storage unavailable */ }
+    try { localStorage.setItem('planner-snapshot', JSON.stringify({ ws: state.ws, members: m.data, projects: p.data, tasks: t.data, deps: d.data, comments: c.data, activity: a.data, invites: inv.data })); } catch { /* storage unavailable */ }
   } catch (e) {
     let snap = null;
     try { snap = JSON.parse(localStorage.getItem('planner-snapshot')); } catch { /* ignore */ }
     if (!snap) throw e;
     state.members = snap.members; state.projects = new Map(snap.projects.map((x) => [x.id, x]));
     state.tasks = new Map(snap.tasks.map((x) => [x.id, x])); state.deps = snap.deps;
-    state.comments = snap.comments; state.activity = snap.activity; state.offline = true;
+    state.comments = snap.comments; state.activity = snap.activity; state.invites = snap.invites || []; state.offline = true;
   }
   state.me = member(state.user.id);
 }
@@ -194,6 +199,10 @@ function subscribe() {
   on('pl_comments', (p) => {
     if (p.eventType === 'DELETE') state.comments = state.comments.filter((c) => c.id !== p.old.id);
     else if (!state.comments.some((c) => c.id === p.new.id)) state.comments.push(p.new);
+  });
+  on('pl_invites', (p) => {
+    if (p.eventType === 'DELETE') state.invites = state.invites.filter((i) => i.id !== p.old.id);
+    else { state.invites = state.invites.filter((i) => i.id !== p.new.id); state.invites.push(p.new); }
   });
   on('pl_members', (p) => {
     if (p.eventType === 'DELETE') return;
@@ -477,7 +486,7 @@ function renderTaskDlg() {
         <label>Due date<input type="date" data-f="due_date" value="${t.due_date || ''}"></label>
         <label>Project<select data-f="project_id"><option value="">No project</option>${[...state.projects.values()].map((p) => `<option value="${p.id}" ${t.project_id === p.id ? 'selected' : ''}>${esc(p.emoji)} ${esc(p.name)}</option>`).join('')}</select></label>
       </div>
-      <div class="sec"><h4>Assigned to</h4><div class="chips">${state.members.map((m) => `<button type="button" class="chip" data-assign="${m.user_id}" aria-pressed="${t.assignees.includes(m.user_id)}">${avatar(m)}${esc(m.display_name)}</button>`).join('')}</div></div>
+      <div class="sec"><h4>Assigned to</h4><div class="chips">${people().map((m) => `<button type="button" class="chip" data-assign="${m.user_id}" aria-pressed="${t.assignees.includes(m.user_id)}">${avatar(m)}${esc(m.display_name)}${m.pending ? ' <span class="muted">(invited)</span>' : ''}</button>`).join('')}<button type="button" class="chip" data-act="invite">+ Invite someone</button></div></div>
       <div class="sec"><h4>Labels</h4><input data-f="labels" value="${esc(t.labels.join(', '))}" placeholder="test, demo, bug (comma separated)" aria-label="Labels"></div>
       <div class="sec"><h4>Notes</h4><textarea data-f="description" aria-label="Notes" placeholder="Details, links, decisions">${esc(t.description)}</textarea></div>
       <div class="sec"><h4>Checklist ${cl.length ? `(${cl.filter((c) => c.done).length}/${cl.length})` : ''}</h4><div class="stack">
@@ -505,6 +514,7 @@ function bindTaskDlg() {
     const t = state.tasks.get(state.openTask);
     if (b.dataset.act === 'close') dlg.close();
     else if (b.dataset.act === 'delete') deleteTask(t.id);
+    else if (b.dataset.act === 'invite') { dlg.close(); openSettings(); }
     else if (b.dataset.open) openTaskDlg(b.dataset.open);
     else if (b.dataset.assign) {
       const has = t.assignees.includes(b.dataset.assign);
@@ -681,8 +691,9 @@ async function openSettings() {
         ${installPrompt ? '<div class="row" style="margin-top:8px"><button class="btn" id="installBtn">Install the app</button></div>' : ''}
       </div>
       <div class="sec"><h4>Invite someone by email</h4>
-        <form class="row" id="inviteForm"><input id="sInvite" type="email" placeholder="their@email.com" aria-label="Email address to invite" required><button class="btn primary" type="submit">Send invite</button></form>
-        <p class="hint" id="inviteMsg" role="status">They get a sign-in email. The link brings them straight into "${esc(state.ws.name)}".</p></div>
+        <form class="stack" id="inviteForm"><div class="row"><input id="sInviteName" placeholder="Their name" aria-label="Their name" required><input id="sInvite" type="email" placeholder="their@email.com" aria-label="Email address to invite" required></div><div class="row"><button class="btn primary" type="submit">Send invite</button></div></form>
+        <p class="hint" id="inviteMsg" role="status">They get a sign-in email that brings them straight into "${esc(state.ws.name)}". You can assign tasks to them straight away, and those tasks become theirs when they join.</p>
+        ${state.invites.length ? `<div class="stack" style="margin-top:8px">${state.invites.map((i) => `<div class="item">${avatar(pendingAsMember(i))}<span class="grow">${esc(i.display_name)} <span class="muted">${esc(i.email)}, waiting to join</span></span><button class="btn" data-resend="${i.id}">Resend</button><button class="x" data-rminvite="${i.id}" aria-label="Remove invite for ${esc(i.display_name)}">✕</button></div>`).join('')}</div>` : ''}</div>
       <div class="sec"><h4>Invite code</h4><div class="row"><span class="code">${esc(state.ws.invite_code)}</span><button class="btn" id="copyCode">Copy</button></div><p class="hint">Share this with someone so they can join "${esc(state.ws.name)}" after creating their account. ${state.members.length} member${state.members.length === 1 ? '' : 's'} so far: ${esc(state.members.map((m) => m.display_name).join(', '))}.</p></div>
     </div>
     <div class="dlg-foot"><button class="btn" id="signOut">Sign out</button><button class="btn primary" data-close>Done</button></div></div>`;
@@ -697,6 +708,8 @@ async function openSettings() {
       else if (b.id === 'pushTest') { const reg = await navigator.serviceWorker.ready; reg.showNotification('AB Planner', { body: 'Notifications are working on this device.', icon: 'icons/icon-192.png' }); }
       else if (b.id === 'installBtn') { installPrompt.prompt(); installPrompt = null; dlg.close(); }
       else if (b.id === 'copyCode') { await navigator.clipboard.writeText(state.ws.invite_code); toast('Invite code copied'); }
+      else if (b.dataset.resend) { const i = state.invites.find((x) => x.id === b.dataset.resend); const e = await sendInvite(i.email, i.display_name); if (e) toast(e, true); }
+      else if (b.dataset.rminvite) { const id = b.dataset.rminvite; state.invites = state.invites.filter((i) => i.id !== id); await run(sb.from('pl_invites').delete().eq('id', id)); render(); openSettings(); }
       else if (b.id === 'signOut') { dlg.close(); await sb.auth.signOut(); }
     } catch (err) { toast(err.message || 'Something went wrong', true); }
   };
@@ -704,20 +717,34 @@ async function openSettings() {
     if (e.target.id !== 'inviteForm') return;
     e.preventDefault();
     const msg = $('#inviteMsg');
-    const email = $('#sInvite').value.trim();
-    if (!email) return;
+    const email = $('#sInvite').value.trim().toLowerCase();
+    const name = $('#sInviteName').value.trim();
+    if (!email || !name) return;
     msg.textContent = 'Sending...';
-    const { error } = await sb.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${location.origin}${location.pathname}?join=${encodeURIComponent(state.ws.invite_code)}` },
-    });
-    msg.textContent = error ? `Could not send: ${error.message}` : `Invite sent to ${email}.`;
-    if (!error) $('#sInvite').value = '';
+    const err = await sendInvite(email, name);
+    if (err) { msg.textContent = `Could not send: ${err}`; return; }
+    openSettings();
   };
   dlg.onchange = (e) => {
     if (e.target.id === 'sName' && e.target.value.trim()) updateMe({ display_name: e.target.value.trim() });
     if (e.target.id === 'sLevel') updateMe({ notify_level: e.target.value });
   };
+}
+
+async function sendInvite(email, name) {
+  const existing = state.invites.find((i) => i.email === email);
+  const row = { workspace_id: state.ws.id, email, display_name: name, colour: existing?.colour || COLOURS[(state.members.length + state.invites.length) % COLOURS.length] };
+  const { data, error } = await sb.from('pl_invites').upsert(row, { onConflict: 'workspace_id,email' }).select().single();
+  if (error) return error.message;
+  state.invites = state.invites.filter((i) => i.id !== data.id).concat(data);
+  const { error: mailErr } = await sb.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: `${location.origin}${location.pathname}?join=${encodeURIComponent(state.ws.invite_code)}` },
+  });
+  render();
+  if (mailErr) return `${mailErr.message} (${name} is still added, so you can assign tasks to them)`;
+  toast(`Invite sent to ${email}`);
+  return null;
 }
 
 async function updateMe(patch) {
