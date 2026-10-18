@@ -178,7 +178,7 @@ dialog {
   width: min(760px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); box-shadow: var(--shadow);
 }
 dialog::backdrop { background: rgba(0,0,0,.55); }
-.dlg { display: flex; flex-direction: column; max-height: calc(100dvh - 24px); }
+.dlg { display: flex; flex-direction: column; max-height: calc(100dvh - 28px); }
 .dlg-head { display: flex; align-items: flex-start; gap: 10px; padding: 16px 18px 8px; }
 .dlg-head input.title { flex: 1; font-size: 18px; font-weight: 700; background: transparent; border-color: transparent; padding: 4px 6px; }
 .dlg-head input.title:hover, .dlg-head input.title:focus { border-color: var(--border); }
@@ -223,3 +223,5 @@ textarea { width: 100%; min-height: 90px; resize: vertical; }
 .seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .seg button { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .seg button .avatar { width: 20px; height: 20px; font-size: 10px; border: 0; }
+
+dialog { overflow: hidden; }
