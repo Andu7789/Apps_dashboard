@@ -51,6 +51,16 @@ const TEMPLATES = [
   },
 ];
 
+// An invite link looks like /planner/?join=CODE. Keep the code until it has been used.
+try {
+  const j = new URLSearchParams(location.search).get('join');
+  if (j) {
+    localStorage.setItem('planner-join', j.toUpperCase().slice(0, 12));
+    history.replaceState(null, '', location.pathname + location.hash);
+  }
+} catch { /* storage unavailable */ }
+const pendingJoin = () => { try { return localStorage.getItem('planner-join') || ''; } catch { return ''; } };
+
 const state = {
   user: null, ws: null, members: [], me: null,
   projects: new Map(), tasks: new Map(), deps: [], comments: [], activity: [],
@@ -670,6 +680,9 @@ async function openSettings() {
           : `<div class="row"><button class="btn ${ps === 'on' ? '' : 'primary'}" id="pushToggle">${ps === 'on' ? 'Turn off on this device' : 'Turn on notifications'}</button>${ps === 'on' ? '<button class="btn" id="pushTest">Send a test</button>' : ''}</div>`}
         ${installPrompt ? '<div class="row" style="margin-top:8px"><button class="btn" id="installBtn">Install the app</button></div>' : ''}
       </div>
+      <div class="sec"><h4>Invite someone by email</h4>
+        <form class="row" id="inviteForm"><input id="sInvite" type="email" placeholder="their@email.com" aria-label="Email address to invite" required><button class="btn primary" type="submit">Send invite</button></form>
+        <p class="hint" id="inviteMsg" role="status">They get a sign-in email. The link brings them straight into "${esc(state.ws.name)}".</p></div>
       <div class="sec"><h4>Invite code</h4><div class="row"><span class="code">${esc(state.ws.invite_code)}</span><button class="btn" id="copyCode">Copy</button></div><p class="hint">Share this with someone so they can join "${esc(state.ws.name)}" after creating their account. ${state.members.length} member${state.members.length === 1 ? '' : 's'} so far: ${esc(state.members.map((m) => m.display_name).join(', '))}.</p></div>
     </div>
     <div class="dlg-foot"><button class="btn" id="signOut">Sign out</button><button class="btn primary" data-close>Done</button></div></div>`;
@@ -686,6 +699,20 @@ async function openSettings() {
       else if (b.id === 'copyCode') { await navigator.clipboard.writeText(state.ws.invite_code); toast('Invite code copied'); }
       else if (b.id === 'signOut') { dlg.close(); await sb.auth.signOut(); }
     } catch (err) { toast(err.message || 'Something went wrong', true); }
+  };
+  dlg.onsubmit = async (e) => {
+    if (e.target.id !== 'inviteForm') return;
+    e.preventDefault();
+    const msg = $('#inviteMsg');
+    const email = $('#sInvite').value.trim();
+    if (!email) return;
+    msg.textContent = 'Sending...';
+    const { error } = await sb.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `${location.origin}${location.pathname}?join=${encodeURIComponent(state.ws.invite_code)}` },
+    });
+    msg.textContent = error ? `Could not send: ${error.message}` : `Invite sent to ${email}.`;
+    if (!error) $('#sInvite').value = '';
   };
   dlg.onchange = (e) => {
     if (e.target.id === 'sName' && e.target.value.trim()) updateMe({ display_name: e.target.value.trim() });
@@ -881,15 +908,27 @@ function bindAuth() {
     if (!name()) { ob.textContent = 'Enter your name first.'; return; }
     const { error } = await sb.rpc('pl_join_workspace', { code: $('#obCode').value, my_name: name() });
     if (error) { ob.textContent = error.message; return; }
+    try { localStorage.removeItem('planner-join'); } catch { /* ignore */ }
     await enter();
   });
   $('#obSignOut').addEventListener('click', () => sb.auth.signOut());
 }
 
+function showOnboard() {
+  const code = pendingJoin();
+  $('#obCode').value = code;
+  $('#obCreate').hidden = !!code;
+  $('#obLead').hidden = !code;
+  $('#obLead').textContent = code ? 'You have been invited to a shared workspace. Enter your name and join.' : '';
+  $('.split', $('#onboard')).style.gridTemplateColumns = code ? '1fr' : '';
+  show('onboard');
+}
+
 let appBound = false;
 async function enter() {
   try {
-    if (!(await loadWorkspace())) { show('onboard'); return; }
+    if (!(await loadWorkspace())) { showOnboard(); return; }
+    try { localStorage.removeItem('planner-join'); } catch { /* ignore */ }
     await loadAll();
   } catch (e) {
     show('auth');
